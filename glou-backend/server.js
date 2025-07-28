@@ -16,11 +16,9 @@ app.post('/api/recommendation', async (req, res) => {
 
   try {
     const chat = await openai.chat.completions.create({
-  model: 'gpt-4-turbo',
-  temperature: 0.7,
-  messages: [{ role: 'user', content: prompt }]
-});
-
+      model: 'gpt-4-turbo',
+      temperature: 0.7,
+      messages: [{ role: 'user', content: prompt }]
     });
 
     const result = chat.choices[0].message.content.trim();
