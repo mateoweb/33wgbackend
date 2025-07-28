@@ -16,10 +16,11 @@ app.post('/api/recommendation', async (req, res) => {
 
   try {
     const chat = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo', // 🔁 tu peux passer temporairement à "gpt-3.5-turbo" si besoin
-      temperature: 0.7,
-      messages: [{ role: 'user', content: prompt }],
-      timeout: 25000 // délai max pour éviter que Render coupe après 30s
+  model: 'gpt-4-turbo',
+  temperature: 0.7,
+  messages: [{ role: 'user', content: prompt }]
+});
+
     });
 
     const result = chat.choices[0].message.content.trim();
