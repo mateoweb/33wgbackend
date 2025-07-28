@@ -6,56 +6,56 @@ import { OpenAI } from 'openai';
 dotenv.config();
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 app.post('/api/recommendation', async (req, res) => {
   const { answers } = req.body;
-  if (!answers || !Array.isArray(answers)) {
-    return res.status(400).json({ error: 'Données invalides reçues' });
-  }
-
   const prompt = buildPrompt(answers);
 
   try {
     const chat = await openai.chat.completions.create({
-      model: 'gpt-4-turbo',
+      model: 'gpt-4-turbo', // 🔁 tu peux passer temporairement à "gpt-3.5-turbo" si besoin
       temperature: 0.7,
       messages: [{ role: 'user', content: prompt }],
+      timeout: 25000 // délai max pour éviter que Render coupe après 30s
     });
 
-    const raw = chat.choices?.[0]?.message?.content || '';
-    console.log('\n📨 Réponse brute IA :\n', raw);
+    const result = chat.choices[0].message.content.trim();
+    let response;
 
-    // On tente de parser
-    const start = raw.indexOf('{');
-    const end = raw.lastIndexOf('}');
-    const jsonString = raw.slice(start, end + 1);
-    const parsed = JSON.parse(jsonString);
+    try {
+      response = JSON.parse(result);
+    } catch {
+      return res.status(500).json({ error: 'Réponse IA invalide' });
+    }
 
-    return res.json(parsed);
+    res.json(response);
   } catch (err) {
-    console.error('\n❌ Erreur pendant traitement OpenAI :', err.message);
-    return res.status(500).json({ error: 'Erreur IA' });
+    console.error('❌ Erreur OpenAI :', err.message);
+    res.status(500).json({ error: 'Erreur IA' });
   }
 });
 
 function buildPrompt(answers) {
-  const formatted = answers.map(a => `- ${a.question} : ${a.answer}`).join('\n');
-  return `
-Tu es un sommelier IA expert en recommandations personnalisées. Voici les réponses de l'utilisateur :
-${formatted}
+  const essentialInfo = answers.map((a) => `- ${a.question} : ${a.answer}`).join('\n');
 
-Analyse-les et propose un vin réel, adapté, bluffant, selon ces critères. Réponds au format JSON suivant :
+  return `
+Tu es un sommelier IA expert. En te basant sur les préférences suivantes, propose un vin réellement existant, facilement trouvable sur Vivino, et parfaitement adapté aux goûts de l'utilisateur. Formate ta réponse en JSON, sans explication.
+
+Préférences :
+${essentialInfo}
+
+Réponds au format :
 
 {
-  "name": "Nom complet du vin",
-  "description": "Une phrase élégante et vendeuse",
+  "name": "Nom du vin",
+  "description": "Phrase élégante qui donne envie",
   "grape": "Cépage principal",
   "country": "Pays",
-  "price": "Prix estimé ou fourchette",
-  "url": "https://www.vivino.com/..."
+  "price": "Fourchette de prix",
+  "url": "Lien Vivino"
 }
 `.trim();
 }
