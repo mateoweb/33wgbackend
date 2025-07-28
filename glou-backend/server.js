@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { OpenAI } from 'openai';
 
 dotenv.config();
+
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
@@ -21,12 +22,18 @@ app.post('/api/recommendation', async (req, res) => {
       messages: [{ role: 'user', content: prompt }]
     });
 
-    const result = chat.choices[0].message.content.trim();
-    let response;
+    const content = chat.choices?.[0]?.message?.content?.trim();
 
+    // Vérifie que la réponse contient un JSON
+    if (!content || !content.includes('{') || !content.includes('}')) {
+      throw new Error("Contenu IA vide ou mal formé");
+    }
+
+    let response;
     try {
-      response = JSON.parse(result);
-    } catch {
+      response = JSON.parse(content);
+    } catch (err) {
+      console.error('❌ Échec du parsing JSON IA :', content);
       return res.status(500).json({ error: 'Réponse IA invalide' });
     }
 
@@ -38,24 +45,26 @@ app.post('/api/recommendation', async (req, res) => {
 });
 
 function buildPrompt(answers) {
-  const essentialInfo = answers.map((a) => `- ${a.question} : ${a.answer}`).join('\n');
+  const formattedAnswers = answers.map(a => `- ${a.question} : ${a.answer}`).join('\n');
 
   return `
-Tu es un sommelier IA expert. En te basant sur les préférences suivantes, propose un vin réellement existant, facilement trouvable sur Vivino, et parfaitement adapté aux goûts de l'utilisateur. Formate ta réponse en JSON, sans explication.
+Tu es un sommelier IA expert. En analysant les réponses ci-dessous, tu dois recommander un vin réel facilement trouvable sur Vivino, qui correspond parfaitement aux goûts exprimés.
 
-Préférences :
-${essentialInfo}
+Voici les réponses de l'utilisateur :
+${formattedAnswers}
 
-Réponds au format :
+Ta réponse doit obligatoirement être au format JSON strict comme ci-dessous, sans aucun texte autour :
 
 {
-  "name": "Nom du vin",
-  "description": "Phrase élégante qui donne envie",
-  "grape": "Cépage principal",
-  "country": "Pays",
-  "price": "Fourchette de prix",
-  "url": "Lien Vivino"
+  "name": "Nom complet du vin (ex : Château Margaux 2015)",
+  "description": "Une phrase élégante qui donne envie (max 25 mots)",
+  "grape": "Cépage principal (ex : Pinot Noir, Chardonnay...)",
+  "country": "Pays (ex : France, Italie...)",
+  "price": "Prix moyen ou fourchette (ex : 25-35€)",
+  "url": "Lien direct vers Vivino (https://www.vivino.com/...)"
 }
+
+Respecte impérativement ce format et ne réponds que par ce JSON, sans texte en dehors ni retour à la ligne inutile.
 `.trim();
 }
 
