@@ -45,28 +45,35 @@ app.post('/api/recommendation', async (req, res) => {
 });
 
 function buildPrompt(answers) {
-  const formattedAnswers = answers.map(a => `- ${a.question} : ${a.answer}`).join('\n');
+  const preferences = answers.map(a => `- ${a.question} : ${a.answer}`).join('\n');
 
   return `
-Tu es un sommelier IA expert. En analysant les réponses ci-dessous, tu dois recommander un vin réel facilement trouvable sur Vivino, qui correspond parfaitement aux goûts exprimés.
+Tu es un sommelier virtuel haut de gamme. Ton rôle est de conseiller un vin parfaitement adapté à l'utilisateur, en tenant compte de ses goûts, de ses habitudes et de ses attentes.
 
-Voici les réponses de l'utilisateur :
-${formattedAnswers}
+Voici les réponses de l’utilisateur :
+${preferences}
 
-Ta réponse doit obligatoirement être au format JSON strict comme ci-dessous, sans aucun texte autour :
+Ta mission : analyser ces réponses comme un expert et recommander un vin réel, disponible sur Vivino, qui va **épater**, **séduire** et **correspondre parfaitement** à ce profil.
+
+Tu dois :
+- Identifier un vin pertinent, cohérent, pas hors budget.
+- Rédiger une **description élégante, percutante et personnalisée**, comme un sommelier qui veut vraiment faire plaisir. Sois convaincant, jamais générique.
+- Fournir un lien Vivino **valide et direct**, sans encodage bizarre.
+- Formater ta réponse en **JSON lisible**, sans texte autour.
+
+Réponds dans ce format précis :
 
 {
-  "name": "Nom complet du vin (ex : Château Margaux 2015)",
-  "description": "Une phrase élégante qui donne envie (max 25 mots)",
-  "grape": "Cépage principal (ex : Pinot Noir, Chardonnay...)",
-  "country": "Pays (ex : France, Italie...)",
-  "price": "Prix moyen ou fourchette (ex : 25-35€)",
-  "url": "Lien direct vers Vivino (https://www.vivino.com/...)"
+  "name": "Nom complet du vin",
+  "description": "Recommandation personnalisée, élégante, engageante (2 à 3 phrases).",
+  "grape": "Cépage principal",
+  "country": "Pays d’origine",
+  "price": "Fourchette de prix estimée (ex : 15-20€)",
+  "url": "Lien direct vers la page Vivino"
 }
-
-Respecte impérativement ce format et ne réponds que par ce JSON, sans texte en dehors ni retour à la ligne inutile.
 `.trim();
 }
+
 
 const port = process.env.PORT || 10000;
 app.listen(port, () => {
