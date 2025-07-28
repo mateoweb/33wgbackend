@@ -12,6 +12,10 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 app.post('/api/recommendation', async (req, res) => {
   const { answers } = req.body;
+  if (!answers || !Array.isArray(answers)) {
+    return res.status(400).json({ error: 'Données invalides reçues' });
+  }
+
   const prompt = buildPrompt(answers);
 
   try {
@@ -21,17 +25,24 @@ app.post('/api/recommendation', async (req, res) => {
       messages: [{ role: 'user', content: prompt }],
     });
 
-    const response = JSON.parse(chat.choices[0].message.content);
-    res.json(response);
+    const raw = chat.choices?.[0]?.message?.content || '';
+    console.log('\n📨 Réponse brute IA :\n', raw);
+
+    // On tente de parser
+    const start = raw.indexOf('{');
+    const end = raw.lastIndexOf('}');
+    const jsonString = raw.slice(start, end + 1);
+    const parsed = JSON.parse(jsonString);
+
+    return res.json(parsed);
   } catch (err) {
-    console.error('Erreur OpenAI :', err.message);
-    res.status(500).json({ error: 'Erreur IA' });
+    console.error('\n❌ Erreur pendant traitement OpenAI :', err.message);
+    return res.status(500).json({ error: 'Erreur IA' });
   }
 });
 
 function buildPrompt(answers) {
   const formatted = answers.map(a => `- ${a.question} : ${a.answer}`).join('\n');
-
   return `
 Tu es un sommelier IA expert en recommandations personnalisées. Voici les réponses de l'utilisateur :
 ${formatted}
